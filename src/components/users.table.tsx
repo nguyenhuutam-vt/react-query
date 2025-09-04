@@ -8,6 +8,8 @@ import UsersPagination from "./pagination/users.pagination";
 import OverlayTrigger from "react-bootstrap/OverlayTrigger";
 import Popover from "react-bootstrap/Popover";
 import { useQuery } from "@tanstack/react-query";
+import { QUERY_KEYS } from "../config/key";
+import { useFetchUsers } from "../config/fetch";
 
 interface IUser {
   id: number;
@@ -18,7 +20,7 @@ interface IUser {
 function UsersTable() {
   const [isOpenCreateModal, setIsOpenCreateModal] = useState<boolean>(false);
   const [currentPage, setCurrentPage] = useState<number>(1);
-  const [totalPages, setTotalPages] = useState<number>(1);
+  // const [totalPages, setTotalPages] = useState<number>(1);
   const [isOpenUpdateModal, setIsOpenUpdateModal] = useState<boolean>(false);
   const [dataUser, setDataUser] = useState({});
 
@@ -87,24 +89,7 @@ function UsersTable() {
   });
 
   //react query
-  const {
-    isPending,
-    error,
-    data: users,
-  } = useQuery({
-    queryKey: ["fetchUser", currentPage],
-    queryFn: (): Promise<IUser[]> =>
-      fetch(`http://localhost:8000/users?_page=${currentPage}&_limit=5`).then(
-        (res) => {
-          console.log(res.headers.get("X-Total-Count"));
-          const total_count = res.headers.get("X-Total-Count") || 1;
-          const limit = 5;
-          setTotalPages(Math.ceil(Number(total_count) / limit));
-          //
-          return res.json();
-        }
-      ),
-  });
+  const { isPending, error, data: users ,totalPages} = useFetchUsers(currentPage);
 
   if (isPending) return "Loading...";
 
@@ -184,9 +169,9 @@ function UsersTable() {
       />
 
       <UserDeleteModal
-        dataUser={dataUser}
         isOpenDeleteModal={isOpenDeleteModal}
         setIsOpenDeleteModal={setIsOpenDeleteModal}
+        dataUser={dataUser}
       />
     </>
   );

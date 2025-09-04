@@ -3,15 +3,44 @@ import Modal from 'react-bootstrap/Modal';
 import FloatingLabel from 'react-bootstrap/FloatingLabel';
 import Form from 'react-bootstrap/Form';
 import { useState } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { IBlog } from '../blogs.table';
+import { toast } from 'react-toastify';
 
 const BlogCreateModal = (props: any) => {
     const { isOpenCreateModal, setIsOpenCreateModal } = props;
+  const queryClient = useQueryClient();
 
     const [title, setTitle] = useState<string>("");
     const [author, setAuthor] = useState<string>("");
     const [content, setContent] = useState<string>("");
 
+  const mutation = useMutation({
+    mutationFn: async (newBlog: IBlog) => {
+      const res = await fetch("http://localhost:8000/blogs", {
+        method: "POST",
+        body: JSON.stringify({
+          title: newBlog?.title,
+          author: newBlog?.author,
+          content: newBlog?.content,
+        }),
+        headers: {
+          "Content-Type": " application/json",
+        },
+      });
+      return res.json();
+    },
 
+    onSuccess(data, variables, context) {
+      toast.success("Create blog successfully", { position: "top-right" });
+      setIsOpenCreateModal(false);
+      setTitle("");
+      setAuthor("");
+      setContent("");
+      //refetch blogs
+      queryClient.invalidateQueries({ queryKey: ["fetchBlog"] });
+    },
+  });
 
     const handleSubmit = () => {
         if (!title) {
@@ -28,6 +57,7 @@ const BlogCreateModal = (props: any) => {
         }
         //call api => call redux
         console.log({ title, author, content }) //payload
+        mutation.mutate({ title: title, author: author, content: content });
     }
 
     return (
