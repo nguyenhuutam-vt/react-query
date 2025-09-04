@@ -17,7 +17,8 @@ interface IUser {
 
 function UsersTable() {
   const [isOpenCreateModal, setIsOpenCreateModal] = useState<boolean>(false);
-
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const [totalPages, setTotalPages] = useState<number>(1);
   const [isOpenUpdateModal, setIsOpenUpdateModal] = useState<boolean>(false);
   const [dataUser, setDataUser] = useState({});
 
@@ -52,15 +53,35 @@ function UsersTable() {
 
   const PopoverComponent = forwardRef((props: any, ref: any) => {
     const { id } = props;
+    //react query
+    const {
+      isPending,
+      error,
+      data: users,
+    } = useQuery({
+      queryKey: ["fetchUser", id],
+      queryFn: (): Promise<IUser> =>
+        fetch(`http://localhost:8000/users/${id}`).then((res) => res.json()),
+    });
+
+    console.log(isPending, error, users);
+
+    const getBody = () => {
+      if (isPending) return "Loading...";
+      if (error) return "An error has occurred: " + error.message;
+      return (
+        <>
+          <div>ID = {id}</div>
+          <div>Name = {users?.name}</div>
+          <div>Email = {users?.email}</div>
+        </>
+      );
+    };
 
     return (
       <Popover ref={ref} {...props}>
         <Popover.Header as="h3">Detail User</Popover.Header>
-        <Popover.Body>
-          <div>ID = {id}</div>
-          <div>Name = ?</div>
-          <div>Email = ?</div>
-        </Popover.Body>
+        <Popover.Body>{getBody()}</Popover.Body>
       </Popover>
     );
   });
@@ -71,9 +92,18 @@ function UsersTable() {
     error,
     data: users,
   } = useQuery({
-    queryKey: ["fetchUser"],
+    queryKey: ["fetchUser", currentPage],
     queryFn: (): Promise<IUser[]> =>
-      fetch("http://localhost:8000/users").then((res) => res.json()),
+      fetch(`http://localhost:8000/users?_page=${currentPage}&_limit=5`).then(
+        (res) => {
+          console.log(res.headers.get("X-Total-Count"));
+          const total_count = res.headers.get("X-Total-Count") || 1;
+          const limit = 5;
+          setTotalPages(Math.ceil(Number(total_count) / limit));
+          //
+          return res.json();
+        }
+      ),
   });
 
   if (isPending) return "Loading...";
@@ -137,7 +167,11 @@ function UsersTable() {
           })}
         </tbody>
       </Table>
-      <UsersPagination totalPages={0} />
+      <UsersPagination
+        currentPage={currentPage}
+        setCurrentPage={setCurrentPage}
+        totalPages={totalPages}
+      />
       <UserCreateModal
         isOpenCreateModal={isOpenCreateModal}
         setIsOpenCreateModal={setIsOpenCreateModal}
